@@ -13,6 +13,8 @@ class TestClaimServer(unittest.TestCase):
             "Mobile: 0912-345-678. "
             "Landline: 02-87654321. "
             "Email: john.doe@example.com. "
+            "DOB: 1990/01/01. "
+            "Address: 台北市信義區信義路五段7號. "
             "Diagnosis: Fracture."
         )
         
@@ -34,9 +36,15 @@ class TestClaimServer(unittest.TestCase):
         
         self.assertNotIn("john.doe@example.com", safe_text)
         self.assertIn("[REDACTED_EMAIL]", safe_text)
+
+        self.assertNotIn("1990/01/01", safe_text)
+        self.assertIn("[REDACTED_DOB]", safe_text)
+
+        self.assertNotIn("台北市信義區信義路五段7號", safe_text)
+        self.assertIn("[REDACTED_ADDRESS]", safe_text)
         
         # Verify non-PII remains
-        self.assertIn("Patient: John Doe.", safe_text) # Names are hard, regex didn't target them
+        self.assertIn("Patient: John Doe.", safe_text)
         self.assertIn("Diagnosis: Fracture.", safe_text)
 
     @patch('server.perform_ocr')

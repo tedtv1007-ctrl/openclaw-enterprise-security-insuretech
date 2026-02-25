@@ -7,7 +7,7 @@ mcp = FastMCP("ClaimGuard-InsureTech")
 # Mock OCR function (Replace with Azure/Tesseract later)
 def perform_ocr(file_path: str) -> str:
     # In a real scenario, this would load the image/pdf and extract text
-    return f"[MOCK OCR CONTENT from {file_path}] User ID: A123456789. Mobile: 0912-345-678. Email: user@example.com. Landline: 02-87654321. Diagnosis: Fracture."
+    return f"[MOCK OCR CONTENT from {file_path}] User ID: A123456789. Mobile: 0912-345-678. Email: user@example.com. Landline: 02-87654321. Address: 台北市信義區信義路五段7號. DOB: 1990/01/01. Diagnosis: Fracture."
 
 @mcp.tool()
 def process_claim_document(file_path: str, claim_id: str) -> dict:
@@ -20,14 +20,17 @@ def process_claim_document(file_path: str, claim_id: str) -> dict:
     raw_text = perform_ocr(file_path)
     
     # 2. PII Detection & Redaction
-    # Taiwain ID Regex (Simplified)
-    id_pattern = r"[A-Z][1-2]\d{8}"
-    # Mobile: 09xx-xxx-xxx or 09xxxxxxxx
-    mobile_pattern = r"09\d{2}-?\d{3}-?\d{3}"
-    # Landline: 0x-xxxxxxx or 0xx-xxxxxxx (e.g., 02-12345678, 04-1234567)
-    landline_pattern = r"0\d{1,2}-?\d{6,8}"
-    # Email
-    email_pattern = r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
+    patterns = {
+        "ID": r"[A-Z][1-2]\d{8}",
+        "MOBILE": r"09\d{2}-?\d{3}-?\d{3}",
+        "LANDLINE": r"0\d{1,2}-?\d{6,8}",
+        "EMAIL": r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}",
+        # Date of Birth (YYYY/MM/DD, YYYY-MM-DD, ROC Year like 80/01/01)
+        "DOB": r"\d{2,4}[-/]\d{1,2}[-/]\d{1,2}",
+        # Address (Taiwan: City/County + District + Road/Street + Sec/Ln/Aly/No)
+        # Simplified regex for demo; production needs NLP or dedicated library
+        "ADDRESS": r"[\u4e00-\u9fa5]+[市縣][\u4e00-\u9fa5]+[區鄉鎮市][\u4e00-\u9fa5]+[路街](?:\d+段)?(?:\d+巷)?(?:\d+弄)?(?:\d+號)(?:\d+樓)?"
+    }
     
     redacted_text = raw_text
     pii_found = []
@@ -40,10 +43,8 @@ def process_claim_document(file_path: str, claim_id: str) -> dict:
             return re.sub(pattern, label, text)
         return text
 
-    redacted_text = redact(id_pattern, "[REDACTED_ID]", redacted_text)
-    redacted_text = redact(mobile_pattern, "[REDACTED_MOBILE]", redacted_text)
-    redacted_text = redact(landline_pattern, "[REDACTED_LANDLINE]", redacted_text)
-    redacted_text = redact(email_pattern, "[REDACTED_EMAIL]", redacted_text)
+    for label, pattern in patterns.items():
+        redacted_text = redact(pattern, f"[REDACTED_{label}]", redacted_text)
 
     # 3. Fraud Check (Basic Logic)
     fraud_score = 0.0
